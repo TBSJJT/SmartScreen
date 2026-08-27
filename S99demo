@@ -1,0 +1,66 @@
+#!/bin/sh
+
+APP_PATH="/root/smartscreen"
+APP_NAME="demo"
+LOG_FILE="/tmp/demo.log"
+
+start() {
+    echo "Starting ${APP_NAME}..."
+
+    pidof ${APP_NAME} >/dev/null
+    if [ $? -eq 0 ]; then
+        echo "${APP_NAME} already running"
+        return
+    fi
+
+    killall -9 wpa_supplicant 2>/dev/null
+    sleep 1
+
+    rm -rf /etc/wifi/wpa_supplicant/sockets/*
+
+    /sbin/ifconfig wlan0 down 2>/dev/null
+    sleep 1
+    /sbin/ifconfig wlan0 up 2>/dev/null
+
+    if [ ! -x "${APP_PATH}/${APP_NAME}" ]; then
+        echo "Error: ${APP_PATH}/${APP_NAME} not found"
+        exit 1
+    fi
+
+    cd ${APP_PATH} || exit 1
+
+    nohup ./${APP_NAME} > ${LOG_FILE} 2>&1 &
+
+    echo "${APP_NAME} started, pid=$!"
+}
+
+stop() {
+    echo "Stopping ${APP_NAME}..."
+    killall ${APP_NAME} 2>/dev/null
+    echo "${APP_NAME} stopped"
+}
+
+restart() {
+    stop
+    sleep 1
+    start
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac
+
+exit 0
+
